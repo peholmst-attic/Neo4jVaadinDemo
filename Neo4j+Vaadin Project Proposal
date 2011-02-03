@@ -1,0 +1,31 @@
+Vaadin + Neo4j Research Project Proposal
+========================================
+
+Purpose:
+	1. Investigate how the Neo4j graph database can be used optimally with Vaadin
+	2. Investigate what kind of applications are best suited for the Neo4j + Vaadin combination
+	
+	Optionally, if there is enough time left:
+	
+	3. Investigate the scalability of Neo4j + Vaadin applications
+
+Deliverables:
+	1. An example application that demonstrates how to use Neo4j + Vaadin
+	2. A template project that can be used as a foundation for other Neo4j + Vaadin applications
+	3. A wiki-article that describes the architecture of the application and summarizes the pros
+	   and cons of using Neo4j + Vaadin
+	   
+	Optionally, if there is enough time left:
+	
+	4. A wiki-article that describes how to scale up Neo4j + Vaadin applications
+
+Schedule:
+    Initial rough estimate (without scalability testing):
+    
+     1 d	Introduction to Neo4j
+     1 d	Specification of sample application
+     2 d	Design and implementation of sample application
+     2 d	Design and implementation of template project
+     4 d	Wiki article
+    -----
+    10 d
