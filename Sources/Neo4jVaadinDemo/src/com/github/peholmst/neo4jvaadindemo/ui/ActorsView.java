@@ -2,6 +2,7 @@ package com.github.peholmst.neo4jvaadindemo.ui;
 
 import com.github.peholmst.neo4jvaadindemo.domain.Actor;
 import com.github.peholmst.neo4jvaadindemo.domain.ActorRepository;
+import com.github.peholmst.neo4jvaadindemo.domain.OptimisticTransactionLockingException;
 import com.vaadin.data.Container;
 import com.vaadin.data.Container.ItemSetChangeEvent;
 import com.vaadin.data.Property;
@@ -17,6 +18,7 @@ import com.vaadin.ui.HorizontalSplitPanel;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Table;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window.Notification;
 import com.vaadin.ui.themes.Reindeer;
 
 public class ActorsView extends HorizontalSplitPanel {
@@ -129,15 +131,16 @@ public class ActorsView extends HorizontalSplitPanel {
 
 			HorizontalLayout editorHeader = new HorizontalLayout();
 			editorHeader.setSpacing(true);
-			//editorHeader.setWidth("100%");
+			// editorHeader.setWidth("100%");
 			editor.addComponent(editorHeader);
 
 			editorTitle = new Label(
 					"Please select an Actor or create a new one");
 			editorTitle.addStyleName(Reindeer.LABEL_H2);
 			editorHeader.addComponent(editorTitle);
-			editorHeader.setComponentAlignment(editorTitle, Alignment.MIDDLE_LEFT);
-			
+			editorHeader.setComponentAlignment(editorTitle,
+					Alignment.MIDDLE_LEFT);
+
 			toggleEditButton = new Button("Edit", new Button.ClickListener() {
 
 				@Override
@@ -148,8 +151,9 @@ public class ActorsView extends HorizontalSplitPanel {
 			toggleEditButton.setDescription("Edit the current Actor");
 			toggleEditButton.addStyleName(Reindeer.BUTTON_SMALL);
 			editorHeader.addComponent(toggleEditButton);
-			editorHeader.setComponentAlignment(toggleEditButton, Alignment.MIDDLE_LEFT);
-			
+			editorHeader.setComponentAlignment(toggleEditButton,
+					Alignment.MIDDLE_LEFT);
+
 			deleteActorButton = new Button("Delete",
 					new Button.ClickListener() {
 
@@ -161,13 +165,8 @@ public class ActorsView extends HorizontalSplitPanel {
 			deleteActorButton.setDescription("Delete the current Actor");
 			deleteActorButton.addStyleName(Reindeer.BUTTON_SMALL);
 			editorHeader.addComponent(deleteActorButton);
-			editorHeader.setComponentAlignment(deleteActorButton, Alignment.MIDDLE_LEFT);
-			//editorHeader.setExpandRatio(deleteActorButton, 1.0f);
-
-			actorForm = new Form();
-			actorForm.setImmediate(true);
-			editor.addComponent(actorForm);
-			editor.setExpandRatio(actorForm, 1.0f);
+			editorHeader.setComponentAlignment(deleteActorButton,
+					Alignment.MIDDLE_LEFT);
 
 			discardChangesButton = new Button("Discard Changes",
 					new Button.ClickListener() {
@@ -177,8 +176,15 @@ public class ActorsView extends HorizontalSplitPanel {
 							discardChanges();
 						}
 					});
-			discardChangesButton.addStyleName(Reindeer.BUTTON_LINK);
-			actorForm.getFooter().addComponent(discardChangesButton);
+			discardChangesButton.setDescription("Discard any changes and exit Edit mode without saving");
+			discardChangesButton.addStyleName(Reindeer.BUTTON_SMALL);
+			editorHeader.addComponent(discardChangesButton);
+			editorHeader.setComponentAlignment(discardChangesButton, Alignment.MIDDLE_LEFT);
+
+			actorForm = new Form();
+			actorForm.setImmediate(true);
+			editor.addComponent(actorForm);
+			editor.setExpandRatio(actorForm, 1.0f);
 
 			setSecondComponent(editor);
 		}
@@ -199,8 +205,10 @@ public class ActorsView extends HorizontalSplitPanel {
 			actorForm.setReadOnly(readOnly);
 			if (readOnly) {
 				editorTitle.setValue(TITLE_SHOW);
+				toggleEditButton.removeStyleName("activatedButton");
 			} else {
 				editorTitle.setValue(TITLE_EDIT);
+				toggleEditButton.addStyleName("activatedButton");
 			}
 		} else {
 			actorForm.setVisible(false);
@@ -246,23 +254,31 @@ public class ActorsView extends HorizontalSplitPanel {
 		BeanItem<Actor> selected = getSelectedItem();
 		if (selected != null) {
 			if (actorForm.isReadOnly()) {
+				selected.getBean().discardChanges();
 				selectActor(selected, false);
 			} else {
-				if (selected.getBean().hasUncommittedChanges()) {
-					selected.getBean().commitChanges();
+				try {
+					if (selected.getBean().hasUncommittedChanges()) {
+						selected.getBean().commitChanges();
+						getWindow().showNotification(
+								"Your changes have been saved", Notification.TYPE_TRAY_NOTIFICATION);
+					}
+					selectActor(selected, true);
+				} catch (OptimisticTransactionLockingException e) {
 					getWindow()
-							.showNotification("Your changes have been saved");
+							.showNotification(
+									"Another user has edited the Actor. Please refresh and try again.",
+									Notification.TYPE_WARNING_MESSAGE);
 				}
-				selectActor(selected, true);
 			}
 		}
 	}
 
 	public void discardChanges() {
 		BeanItem<Actor> selected = getSelectedItem();
-		if (selected != null && selected.getBean().hasUncommittedChanges()) {
+		if (selected != null) {
 			selected.getBean().discardChanges();
-			selectActor(selected, false);
+			selectActor(selected, true);
 			actorsTable.containerItemSetChange(new ItemSetChangeEvent() {
 
 				private static final long serialVersionUID = -469941572197739778L;
@@ -272,7 +288,6 @@ public class ActorsView extends HorizontalSplitPanel {
 					return actorsContainer;
 				}
 			});
-			getWindow().showNotification("Your changes have been discarded");
 		}
 	}
 }

@@ -1,5 +1,8 @@
 package com.github.peholmst.neo4jvaadindemo;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
 
@@ -51,6 +54,8 @@ public class Backend {
 	private final RequirementRepositoryImpl requirementRepository;
 
 	private final ScopeRepositoryImpl scopeRepository;
+	
+	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	private Backend(GraphDatabaseService graphDb) {
 		INSTANCE = this;
@@ -102,6 +107,7 @@ public class Backend {
 		public void remove() {
 			Transaction tx = get();
 			if (tx != null) {
+				logger.log(Level.INFO, "Finishing transaction {0}", tx);
 				tx.finish();
 			}
 			super.remove();
@@ -111,19 +117,23 @@ public class Backend {
 	private Object runInsideTransaction(
 			GraphDatabaseServiceProvider.TransactionJob job, boolean readOnly)
 			throws RuntimeException {
+		logger.log(Level.INFO, "Running job {0} inside a transaction, readOnly = {1}", new Object[] {job, readOnly});
 		Transaction tx = currentTransaction.get();
 		if (tx == null) {
+			logger.log(Level.INFO, "No existing transaction, starting a new for job {0}", job);
 			tx = getGraphDb().beginTx();
 			currentTransaction.set(tx);
 		}
 		try {
 			Object result = job.run();
 			if (!readOnly) {
+				logger.log(Level.INFO, "Committing the transaction for job {0}", job);
 				tx.success();
 				currentTransaction.remove();
 			}
 			return result;
 		} catch (RuntimeException e) {
+			logger.log(Level.INFO, "Job {0} failed, rolling back transaction", job);
 			tx.failure();
 			currentTransaction.remove();
 			throw e;

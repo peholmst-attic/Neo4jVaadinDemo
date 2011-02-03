@@ -1,1 +1,5 @@
 @import url(../reindeer/styles.css);
+
+.v-button-activatedButton .v-button-caption {
+	text-shadow: aqua 1px 1px 1px;	
+}
