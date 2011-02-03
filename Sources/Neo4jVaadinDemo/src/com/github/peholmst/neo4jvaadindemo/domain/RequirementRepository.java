@@ -1,7 +1,5 @@
 package com.github.peholmst.neo4jvaadindemo.domain;
 
-public interface RequirementRepository {
-
-	Requirement createRequirement();
+public interface RequirementRepository extends Repository<Requirement> {
 	
 }

@@ -24,7 +24,7 @@ public class MainWindow extends Window {
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
 		if (actorsView != null) {
-			actorsView.setFactory(Backend.getInstance().getActorRepository());
+			actorsView.setRepository(Backend.getInstance().getActorRepository());
 		}
 	}	
 	

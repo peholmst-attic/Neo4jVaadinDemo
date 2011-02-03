@@ -1,9 +1,12 @@
 package com.github.peholmst.neo4jvaadindemo.domain.impl;
 
+import java.util.Collection;
+import java.util.Iterator;
+
 import com.github.peholmst.neo4jvaadindemo.domain.Stakeholder;
 import com.github.peholmst.neo4jvaadindemo.domain.StakeholderRepository;
 
-public class StakeholderRepositoryImpl extends BaseAggregateRootRepository implements
+public class StakeholderRepositoryImpl extends BaseAggregateRootRepository<Stakeholder> implements
 		StakeholderRepository {
 
 	public StakeholderRepositoryImpl(GraphDatabaseServiceProvider serviceProvider) {
@@ -12,8 +15,20 @@ public class StakeholderRepositoryImpl extends BaseAggregateRootRepository imple
 	}
 
 	@Override
-	public Stakeholder createStakeholder() {
+	public Stakeholder create() {
 		return new StakeholderImpl(createNode(), getNextId(), getServiceProvider());
+	}
+
+	@Override
+	public Collection<Stakeholder> getAll() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Iterator<Stakeholder> getIterator() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

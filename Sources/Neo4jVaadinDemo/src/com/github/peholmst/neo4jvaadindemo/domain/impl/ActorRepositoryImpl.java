@@ -9,7 +9,7 @@ import com.github.peholmst.neo4jvaadindemo.domain.Actor;
 import com.github.peholmst.neo4jvaadindemo.domain.ActorRepository;
 import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
-public class ActorRepositoryImpl extends BaseAggregateRootRepository implements
+public class ActorRepositoryImpl extends BaseAggregateRootRepository<Actor> implements
 		ActorRepository {
 
 	public ActorRepositoryImpl(GraphDatabaseServiceProvider serviceProvider) {
@@ -18,7 +18,7 @@ public class ActorRepositoryImpl extends BaseAggregateRootRepository implements
 	}
 
 	@Override
-	public Actor createActor() {
+	public Actor create() {
 		return (Actor) getServiceProvider().runInsideTransaction(
 				new TransactionJob() {
 
@@ -32,7 +32,7 @@ public class ActorRepositoryImpl extends BaseAggregateRootRepository implements
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Collection<Actor> getActors() {
+	public Collection<Actor> getAll() {
 		return (Collection<Actor>) getServiceProvider().runInsideTransaction(
 				new TransactionJob() {
 
@@ -46,7 +46,7 @@ public class ActorRepositoryImpl extends BaseAggregateRootRepository implements
 	}
 
 	@Override
-	public Iterator<Actor> getActorIterator() {
+	public Iterator<Actor> getIterator() {
 		// TODO Figure out how to handle transactions!
 		return new BaseNodeWrapperIterator<Actor>(getFactoryNode(),
 				RelationshipTypes.SR_ACTOR) {

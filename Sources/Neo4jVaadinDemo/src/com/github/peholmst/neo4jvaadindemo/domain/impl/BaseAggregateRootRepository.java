@@ -3,7 +3,10 @@ package com.github.peholmst.neo4jvaadindemo.domain.impl;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
 
-public abstract class BaseAggregateRootRepository extends BaseRepository {
+import com.github.peholmst.neo4jvaadindemo.domain.AggregateRoot;
+import com.github.peholmst.neo4jvaadindemo.domain.Repository;
+
+public abstract class BaseAggregateRootRepository<T extends AggregateRoot> extends BaseRepository implements Repository<T> {
 
 	public BaseAggregateRootRepository(GraphDatabaseServiceProvider serviceProvider,
 			RelationshipType startToSubrefType,

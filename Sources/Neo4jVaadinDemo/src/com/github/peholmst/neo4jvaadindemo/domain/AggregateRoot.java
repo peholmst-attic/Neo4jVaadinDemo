@@ -3,7 +3,7 @@ package com.github.peholmst.neo4jvaadindemo.domain;
 
 public interface AggregateRoot {
 
-	long getId();
+	long getIdentifier();
 	
 	void commitChanges();
 

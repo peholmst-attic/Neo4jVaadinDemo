@@ -20,7 +20,7 @@ public abstract class BaseAggregateRoot extends BaseNodeWrapper implements Aggre
 	}
 
 	@Override
-	public long getId() {
+	public long getIdentifier() {
 		return (Long) getProperty(KEY_ID);
 	}
 	
