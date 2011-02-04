@@ -79,29 +79,31 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 		return wrappedNode;
 	}
 
-	/*
-	 * @Override public boolean equals(Object obj) { if (obj == null) { return
-	 * false; } if (obj.getClass() != getClass()) { return false; } if (obj ==
-	 * this) { return true; } if (isInvalid()) { return false; } final
-	 * BaseNodeWrapper other = (BaseNodeWrapper) obj; if
-	 * (!propertyValueCache.equals(other.propertyValueCache)) { return false; }
-	 * return (Boolean) getServiceProvider().runInsideTransaction( new
-	 * TransactionJob() {
-	 * 
-	 * @Override public Object run() throws RuntimeException { return
-	 * getNode().equals(other.getNode()); }
-	 * 
-	 * }, true); }
-	 * 
-	 * @Override public int hashCode() { if (isInvalid()) { return 0; } return
-	 * (Integer) getServiceProvider().runInsideTransaction( new TransactionJob()
-	 * {
-	 * 
-	 * @Override public Object run() throws RuntimeException { return
-	 * getNode().hashCode() + propertyValueCache.hashCode(); }
-	 * 
-	 * }, true); }
-	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null) {
+			return false;
+		}
+		if (obj == this) {
+			return true;
+		}
+		if (obj.getClass() != getClass()) {
+			return false;
+		}
+		if (isInvalid()) {
+			return ((BaseNodeWrapper) obj).isInvalid();
+		}
+		return getNode().getId() == ((BaseNodeWrapper) obj).getNode().getId();
+	}
+	
+	@Override
+	public int hashCode() {
+		if (isInvalid()) {
+			return 0;
+		} else {
+			return getNode().hashCode();
+		}
+	}
 
 	public static <E, T extends E> Collection<E> wrapNodeCollection(
 			Collection<Node> nodeCollection, Class<E> interfaceClass,
@@ -171,31 +173,31 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 
 			@Override
 			public Object run() {
-				doCommit();
-				return null;
+				try {
+					if ((Long) getNode().getProperty(
+							KEY_OPTIMISTIC_LOCKING_VERSION) != optimisticLockingVersion) {
+						throw new OptimisticTransactionLockingException();
+					}
+					doCommit();
+					getNode().setProperty(KEY_OPTIMISTIC_LOCKING_VERSION,
+							++optimisticLockingVersion);
+					return null;
+				} catch (NotFoundException e) {
+					invalidate();
+					throw new ObjectInvalidException();
+				}
 			}
 
 		}, false);
 	}
 
 	protected void doCommit() {
-		try {
-			if ((Long) getNode().getProperty(KEY_OPTIMISTIC_LOCKING_VERSION) != optimisticLockingVersion) {
-				throw new OptimisticTransactionLockingException();
+		for (Map.Entry<String, Object> entry : propertyValueCache.entrySet()) {
+			if (entry.getValue() == null) {
+				getNode().removeProperty(entry.getKey());
+			} else {
+				getNode().setProperty(entry.getKey(), entry.getValue());
 			}
-			for (Map.Entry<String, Object> entry : propertyValueCache
-					.entrySet()) {
-				if (entry.getValue() == null) {
-					getNode().removeProperty(entry.getKey());
-				} else {
-					getNode().setProperty(entry.getKey(), entry.getValue());
-				}
-			}
-			getNode().setProperty(KEY_OPTIMISTIC_LOCKING_VERSION,
-					++optimisticLockingVersion);
-		} catch (NotFoundException e) {
-			invalidate();
-			throw new ObjectInvalidException("Object is invalid");
 		}
 		propertyValueCache.clear();
 	}
@@ -238,9 +240,14 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 
 			@Override
 			public Object run() throws RuntimeException {
-				optimisticLockingVersion = (Long) getNode().getProperty(
-						KEY_OPTIMISTIC_LOCKING_VERSION);
-				return null;
+				try {
+					optimisticLockingVersion = (Long) getNode().getProperty(
+							KEY_OPTIMISTIC_LOCKING_VERSION);
+					return null;
+				} catch (NotFoundException e) {
+					invalidate();
+					throw new ObjectInvalidException();
+				}
 			}
 		}, true);
 	}
