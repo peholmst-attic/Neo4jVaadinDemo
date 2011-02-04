@@ -5,28 +5,47 @@ import java.util.Iterator;
 
 import com.github.peholmst.neo4jvaadindemo.domain.Scope;
 import com.github.peholmst.neo4jvaadindemo.domain.ScopeRepository;
+import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
-public class ScopeRepositoryImpl extends BaseAggregateRootRepository<Scope> implements ScopeRepository {
+public class ScopeRepositoryImpl extends BaseAggregateRootRepository<Scope>
+		implements ScopeRepository {
 
 	public ScopeRepositoryImpl(GraphDatabaseServiceProvider serviceProvider) {
-		super(serviceProvider, RelationshipTypes.SR_SCOPES, RelationshipTypes.SR_SCOPE);
+		super(serviceProvider, RelationshipTypes.SR_SCOPES,
+				RelationshipTypes.SR_SCOPE);
 	}
 
 	@Override
 	public Scope create() {
-		return new ScopeImpl(createNode(), getNextId(), getServiceProvider());
+		return (Scope) getServiceProvider().runInsideTransaction(
+				new TransactionJob() {
+
+					@Override
+					public Object run() throws RuntimeException {
+						return new ScopeImpl(createNode(), getNextId(),
+								getServiceProvider());
+					}
+				}, false);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Scope> getAll() {
-		// TODO Auto-generated method stub
-		return null;
+		return (Collection<Scope>) getServiceProvider().runInsideTransaction(
+				new TransactionJob() {
+
+					@Override
+					public Object run() throws RuntimeException {
+						return BaseNodeWrapper.wrapNodeCollection(
+								getNodeCollection(), Scope.class,
+								ScopeImpl.class, getServiceProvider());
+					}
+				}, true);
 	}
 
 	@Override
 	public Iterator<Scope> getIterator() {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Not implemented yet!");
 	}
 
 }

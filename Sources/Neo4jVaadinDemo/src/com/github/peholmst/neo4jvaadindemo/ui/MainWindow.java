@@ -21,10 +21,20 @@ public class MainWindow extends Window {
 	
 	private ActorsView actorsView;
 	
+	private StakeholdersView stakeholdersView;
+	
+	private ScopesView scopesView;
+	
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
 		if (actorsView != null) {
 			actorsView.setRepository(Backend.getInstance().getActorRepository());
+		}
+		if (stakeholdersView != null) {
+			stakeholdersView.setRepository(Backend.getInstance().getStakeholderRepository());
+		}
+		if (scopesView != null) {
+			scopesView.setRepository(Backend.getInstance().getScopeRepository());
 		}
 	}	
 	
@@ -49,8 +59,11 @@ public class MainWindow extends Window {
 		actorsView = new ActorsView(Backend.getInstance().getActorRepository());
 		tabSheet.addTab(actorsView, "Actors", null);
 		
-		tabSheet.addTab(new Label("Stakeholders"), "Stakeholders", null);
-		tabSheet.addTab(new Label("Scopes"), "Scopes", null);
+		stakeholdersView = new StakeholdersView(Backend.getInstance().getStakeholderRepository());
+		tabSheet.addTab(stakeholdersView, "Stakeholders", null);
+		
+		scopesView = new ScopesView(Backend.getInstance().getScopeRepository());
+		tabSheet.addTab(scopesView, "Scopes", null);
 	}
 	
 }

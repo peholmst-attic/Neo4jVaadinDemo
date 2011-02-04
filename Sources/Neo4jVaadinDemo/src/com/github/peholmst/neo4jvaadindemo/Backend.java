@@ -101,7 +101,7 @@ public class Backend {
 	private GraphDatabaseService getGraphDb() {
 		return graphDb;
 	}
-	
+
 	private final ThreadLocal<Transaction> currentTransaction = new ThreadLocal<Transaction>() {
 		@Override
 		public void remove() {
@@ -123,17 +123,19 @@ public class Backend {
 			logger.log(Level.INFO, "No existing transaction, starting a new for job {0}", job);
 			tx = getGraphDb().beginTx();
 			currentTransaction.set(tx);
+		} else {
+			logger.log(Level.INFO, "Using an existing transaction for job {0}", job);
 		}
 		try {
 			Object result = job.run();
 			if (!readOnly) {
-				logger.log(Level.INFO, "Committing the transaction for job {0}", job);
+				logger.log(Level.INFO, "Job {0} succeeded", job);
 				tx.success();
 				currentTransaction.remove();
 			}
 			return result;
 		} catch (RuntimeException e) {
-			logger.log(Level.INFO, "Job {0} failed, rolling back transaction", job);
+			logger.log(Level.INFO, "Job {0} failed, marking transaction for rollback", job);
 			tx.failure();
 			currentTransaction.remove();
 			throw e;

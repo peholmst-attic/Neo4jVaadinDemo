@@ -5,30 +5,49 @@ import java.util.Iterator;
 
 import com.github.peholmst.neo4jvaadindemo.domain.Stakeholder;
 import com.github.peholmst.neo4jvaadindemo.domain.StakeholderRepository;
+import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
-public class StakeholderRepositoryImpl extends BaseAggregateRootRepository<Stakeholder> implements
+public class StakeholderRepositoryImpl extends
+		BaseAggregateRootRepository<Stakeholder> implements
 		StakeholderRepository {
 
-	public StakeholderRepositoryImpl(GraphDatabaseServiceProvider serviceProvider) {
+	public StakeholderRepositoryImpl(
+			GraphDatabaseServiceProvider serviceProvider) {
 		super(serviceProvider, RelationshipTypes.SR_STAKEHOLDERS,
 				RelationshipTypes.SR_STAKEHOLDER);
 	}
 
 	@Override
 	public Stakeholder create() {
-		return new StakeholderImpl(createNode(), getNextId(), getServiceProvider());
+		return (Stakeholder) getServiceProvider().runInsideTransaction(
+				new TransactionJob() {
+
+					@Override
+					public Object run() throws RuntimeException {
+						return new StakeholderImpl(createNode(), getNextId(),
+								getServiceProvider());
+					}
+				}, false);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Stakeholder> getAll() {
-		// TODO Auto-generated method stub
-		return null;
+		return (Collection<Stakeholder>) getServiceProvider()
+				.runInsideTransaction(new TransactionJob() {
+
+					@Override
+					public Object run() throws RuntimeException {
+						return BaseNodeWrapper.wrapNodeCollection(
+								getNodeCollection(), Stakeholder.class,
+								StakeholderImpl.class, getServiceProvider());
+					}
+				}, true);
 	}
 
 	@Override
 	public Iterator<Stakeholder> getIterator() {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Not implemented yet!");
 	}
 
 }
