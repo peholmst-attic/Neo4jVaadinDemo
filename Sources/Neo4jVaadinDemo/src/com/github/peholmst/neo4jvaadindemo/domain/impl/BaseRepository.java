@@ -10,9 +10,8 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.ReturnableEvaluator;
 import org.neo4j.graphdb.StopEvaluator;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.Traverser;
-
-import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
 public abstract class BaseRepository {
 
@@ -34,25 +33,24 @@ public abstract class BaseRepository {
 			throw new IllegalArgumentException("null subrefToNodesType");
 		}
 		this.serviceProvider = serviceProvider;
-		factoryNode = (Node) serviceProvider.runInsideTransaction(
-				new TransactionJob() {
 
-					@Override
-					public Object run() throws RuntimeException {
-						Relationship rel = getGraphDb().getReferenceNode()
-								.getSingleRelationship(startToSubrefType,
-										Direction.OUTGOING);
-						if (rel == null) {
-							Node factoryNode = getGraphDb().createNode();
-							getGraphDb().getReferenceNode()
-									.createRelationshipTo(factoryNode,
-											startToSubrefType);
-							return factoryNode;
-						} else {
-							return rel.getEndNode();
-						}
-					}
-				}, false);
+		Transaction tx = serviceProvider.getGraphDatabaseService().beginTx();
+		try {
+			Relationship rel = getGraphDb().getReferenceNode()
+					.getSingleRelationship(startToSubrefType,
+							Direction.OUTGOING);
+			if (rel == null) {
+				Node factoryNode = getGraphDb().createNode();
+				getGraphDb().getReferenceNode().createRelationshipTo(
+						factoryNode, startToSubrefType);
+				this.factoryNode = factoryNode;
+			} else {
+				this.factoryNode = rel.getEndNode();
+			}
+			tx.success();
+		} finally {
+			tx.finish();
+		}
 		this.subrefToNodesType = subrefToNodesType;
 	}
 

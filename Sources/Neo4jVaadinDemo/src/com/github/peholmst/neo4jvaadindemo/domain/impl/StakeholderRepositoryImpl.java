@@ -5,7 +5,6 @@ import java.util.Iterator;
 
 import com.github.peholmst.neo4jvaadindemo.domain.Stakeholder;
 import com.github.peholmst.neo4jvaadindemo.domain.StakeholderRepository;
-import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
 public class StakeholderRepositoryImpl extends
 		BaseAggregateRootRepository<Stakeholder> implements
@@ -18,31 +17,15 @@ public class StakeholderRepositoryImpl extends
 	}
 
 	@Override
-	public Stakeholder create() {
-		return (Stakeholder) getServiceProvider().runInsideTransaction(
-				new TransactionJob() {
-
-					@Override
-					public Object run() throws RuntimeException {
-						return new StakeholderImpl(createNode(), getNextId(),
-								getServiceProvider());
-					}
-				}, false);
+	public Stakeholder doCreate() {
+		return new StakeholderImpl(createNode(), getNextId(),
+				getServiceProvider());
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Stakeholder> getAll() {
-		return (Collection<Stakeholder>) getServiceProvider()
-				.runInsideTransaction(new TransactionJob() {
-
-					@Override
-					public Object run() throws RuntimeException {
-						return BaseNodeWrapper.wrapNodeCollection(
-								getNodeCollection(), Stakeholder.class,
-								StakeholderImpl.class, getServiceProvider());
-					}
-				}, true);
+		return BaseNodeWrapper.wrapNodeCollection(getNodeCollection(),
+				Stakeholder.class, StakeholderImpl.class, getServiceProvider());
 	}
 
 	@Override

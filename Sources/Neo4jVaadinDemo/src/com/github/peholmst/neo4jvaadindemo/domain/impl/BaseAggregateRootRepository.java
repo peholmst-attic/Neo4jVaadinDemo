@@ -2,6 +2,7 @@ package com.github.peholmst.neo4jvaadindemo.domain.impl;
 
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
 
 import com.github.peholmst.neo4jvaadindemo.domain.AggregateRoot;
 import com.github.peholmst.neo4jvaadindemo.domain.Repository;
@@ -26,4 +27,18 @@ public abstract class BaseAggregateRootRepository<T extends AggregateRoot> exten
 		getFactoryNode().setProperty(KEY_COUNTER, new Long(counter + 1));
 		return counter;
 	}
+	
+	@Override
+	public T create() {
+		Transaction tx = getServiceProvider().getGraphDatabaseService().beginTx();
+		try {
+			T ar = doCreate();
+			tx.success();
+			return ar;
+		} finally {
+			tx.finish();
+		}
+	}
+	
+	protected abstract T doCreate();
 }

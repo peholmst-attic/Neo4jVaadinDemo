@@ -1,8 +1,5 @@
 package com.github.peholmst.neo4jvaadindemo;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
 
@@ -35,12 +32,6 @@ public class Backend {
 			return Backend.getInstance().getGraphDb();
 		}
 
-		@Override
-		public Object runInsideTransaction(TransactionJob job, boolean readOnly)
-				throws RuntimeException {
-			return Backend.getInstance().runInsideTransaction(job, readOnly);
-		}
-
 	}
 
 	private final GraphDatabaseServiceProvider graphDbProvider = new ServiceProvider();
@@ -55,7 +46,7 @@ public class Backend {
 
 	private final ScopeRepositoryImpl scopeRepository;
 	
-	private final Logger logger = Logger.getLogger(getClass().getName());
+//	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	private Backend(GraphDatabaseService graphDb) {
 		INSTANCE = this;
@@ -102,43 +93,4 @@ public class Backend {
 		return graphDb;
 	}
 
-	private final ThreadLocal<Transaction> currentTransaction = new ThreadLocal<Transaction>() {
-		@Override
-		public void remove() {
-			Transaction tx = get();
-			if (tx != null) {
-				logger.log(Level.INFO, "Finishing transaction {0}", tx);
-				tx.finish();
-			}
-			super.remove();
-		}
-	};
-	
-	private Object runInsideTransaction(
-			GraphDatabaseServiceProvider.TransactionJob job, boolean readOnly)
-			throws RuntimeException {
-		logger.log(Level.INFO, "Running job {0} inside a transaction, readOnly = {1}", new Object[] {job, readOnly});
-		Transaction tx = currentTransaction.get();
-		if (tx == null) {
-			logger.log(Level.INFO, "No existing transaction, starting a new for job {0}", job);
-			tx = getGraphDb().beginTx();
-			currentTransaction.set(tx);
-		} else {
-			logger.log(Level.INFO, "Using an existing transaction for job {0}", job);
-		}
-		try {
-			Object result = job.run();
-			if (!readOnly) {
-				logger.log(Level.INFO, "Job {0} succeeded", job);
-				tx.success();
-				currentTransaction.remove();
-			}
-			return result;
-		} catch (RuntimeException e) {
-			logger.log(Level.INFO, "Job {0} failed, marking transaction for rollback", job);
-			tx.failure();
-			currentTransaction.remove();
-			throw e;
-		}
-	}
 }

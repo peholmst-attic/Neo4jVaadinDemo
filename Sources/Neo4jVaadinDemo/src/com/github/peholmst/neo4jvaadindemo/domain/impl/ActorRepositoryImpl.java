@@ -7,10 +7,9 @@ import org.neo4j.graphdb.Node;
 
 import com.github.peholmst.neo4jvaadindemo.domain.Actor;
 import com.github.peholmst.neo4jvaadindemo.domain.ActorRepository;
-import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
-public class ActorRepositoryImpl extends BaseAggregateRootRepository<Actor> implements
-		ActorRepository {
+public class ActorRepositoryImpl extends BaseAggregateRootRepository<Actor>
+		implements ActorRepository {
 
 	public ActorRepositoryImpl(GraphDatabaseServiceProvider serviceProvider) {
 		super(serviceProvider, RelationshipTypes.SR_ACTORS,
@@ -18,36 +17,18 @@ public class ActorRepositoryImpl extends BaseAggregateRootRepository<Actor> impl
 	}
 
 	@Override
-	public Actor create() {
-		return (Actor) getServiceProvider().runInsideTransaction(
-				new TransactionJob() {
-
-					@Override
-					public Object run() throws RuntimeException {
-						return new ActorImpl(createNode(), getNextId(),
-								getServiceProvider());
-					}
-				}, false);
+	public Actor doCreate() {
+		return new ActorImpl(createNode(), getNextId(), getServiceProvider());
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Actor> getAll() {
-		return (Collection<Actor>) getServiceProvider().runInsideTransaction(
-				new TransactionJob() {
-
-					@Override
-					public Object run() throws RuntimeException {
-						return BaseNodeWrapper.wrapNodeCollection(
-								getNodeCollection(), Actor.class,
-								ActorImpl.class, getServiceProvider());
-					}
-				}, true);
+		return BaseNodeWrapper.wrapNodeCollection(getNodeCollection(),
+				Actor.class, ActorImpl.class, getServiceProvider());
 	}
 
 	@Override
 	public Iterator<Actor> getIterator() {
-		// TODO Figure out how to handle transactions!
 		return new BaseNodeWrapperIterator<Actor>(getFactoryNode(),
 				RelationshipTypes.SR_ACTOR) {
 			@Override

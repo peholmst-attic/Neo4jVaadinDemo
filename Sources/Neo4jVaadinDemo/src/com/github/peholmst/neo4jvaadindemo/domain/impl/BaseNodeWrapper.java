@@ -11,10 +11,10 @@ import java.util.logging.Logger;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Transaction;
 
 import com.github.peholmst.neo4jvaadindemo.domain.ObjectInvalidException;
 import com.github.peholmst.neo4jvaadindemo.domain.OptimisticTransactionLockingException;
-import com.github.peholmst.neo4jvaadindemo.domain.impl.GraphDatabaseServiceProvider.TransactionJob;
 
 public abstract class BaseNodeWrapper implements java.io.Serializable {
 
@@ -58,15 +58,8 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 			ClassNotFoundException {
 		in.defaultReadObject();
 		if (wrappedNodeId != -1) {
-			getServiceProvider().runInsideTransaction(new TransactionJob() {
-
-				@Override
-				public Object run() throws RuntimeException {
-					wrappedNode = serviceProvider.getGraphDatabaseService()
-							.getNodeById(wrappedNodeId);
-					return null;
-				}
-			}, true);
+			wrappedNode = serviceProvider.getGraphDatabaseService()
+					.getNodeById(wrappedNodeId);
 		}
 		this.logger = Logger.getLogger(getClass().getName());
 	}
@@ -95,7 +88,7 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 		}
 		return getNode().getId() == ((BaseNodeWrapper) obj).getNode().getId();
 	}
-	
+
 	@Override
 	public int hashCode() {
 		if (isInvalid()) {
@@ -134,19 +127,11 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 			return propertyValueCache.get(propertyName);
 		}
 		try {
-			return getServiceProvider().runInsideTransaction(
-					new TransactionJob() {
-
-						@Override
-						public Object run() throws RuntimeException {
-							if (getNode().hasProperty(propertyName)) {
-								return getNode().getProperty(propertyName);
-							} else {
-								return null;
-							}
-						}
-
-					}, true);
+			if (getNode().hasProperty(propertyName)) {
+				return getNode().getProperty(propertyName);
+			} else {
+				return null;
+			}
 		} catch (NotFoundException e) {
 			invalidate();
 			throw new ObjectInvalidException("Object is invalid");
@@ -169,26 +154,22 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 					"Cannot commit changes to an invalid object");
 		}
 		logger.log(Level.INFO, "Commiting changes to object {0}", this);
-		getServiceProvider().runInsideTransaction(new TransactionJob() {
-
-			@Override
-			public Object run() {
-				try {
-					if ((Long) getNode().getProperty(
-							KEY_OPTIMISTIC_LOCKING_VERSION) != optimisticLockingVersion) {
-						throw new OptimisticTransactionLockingException();
-					}
-					doCommit();
-					getNode().setProperty(KEY_OPTIMISTIC_LOCKING_VERSION,
-							++optimisticLockingVersion);
-					return null;
-				} catch (NotFoundException e) {
-					invalidate();
-					throw new ObjectInvalidException();
-				}
+		Transaction tx = getServiceProvider().getGraphDatabaseService()
+				.beginTx();
+		try {
+			if ((Long) getNode().getProperty(KEY_OPTIMISTIC_LOCKING_VERSION) != optimisticLockingVersion) {
+				throw new OptimisticTransactionLockingException();
 			}
-
-		}, false);
+			doCommit();
+			getNode().setProperty(KEY_OPTIMISTIC_LOCKING_VERSION,
+					++optimisticLockingVersion);
+			tx.success();
+		} catch (NotFoundException e) {
+			invalidate();
+			throw new ObjectInvalidException();
+		} finally {
+			tx.finish();
+		}
 	}
 
 	protected void doCommit() {
@@ -206,14 +187,13 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 		if (isInvalid()) {
 			throw new ObjectInvalidException("Cannot delete an invalid object");
 		}
-		getServiceProvider().runInsideTransaction(new TransactionJob() {
-
-			@Override
-			public Object run() throws RuntimeException {
-				doDelete();
-				return null;
-			}
-		}, false);
+		Transaction tx = getServiceProvider().getGraphDatabaseService().beginTx();
+		try {
+			doDelete();
+			tx.success();
+		} finally {
+			tx.finish();
+		}
 		invalidate();
 	}
 
@@ -236,20 +216,13 @@ public abstract class BaseNodeWrapper implements java.io.Serializable {
 		}
 		logger.log(Level.INFO, "Discarding changes to object {0}", this);
 		propertyValueCache.clear();
-		getServiceProvider().runInsideTransaction(new TransactionJob() {
-
-			@Override
-			public Object run() throws RuntimeException {
-				try {
-					optimisticLockingVersion = (Long) getNode().getProperty(
-							KEY_OPTIMISTIC_LOCKING_VERSION);
-					return null;
-				} catch (NotFoundException e) {
-					invalidate();
-					throw new ObjectInvalidException();
-				}
-			}
-		}, true);
+		try {
+			optimisticLockingVersion = (Long) getNode().getProperty(
+					KEY_OPTIMISTIC_LOCKING_VERSION);
+		} catch (NotFoundException e) {
+			invalidate();
+			throw new ObjectInvalidException();
+		}
 	}
 
 	public boolean hasUncommittedChanges() {

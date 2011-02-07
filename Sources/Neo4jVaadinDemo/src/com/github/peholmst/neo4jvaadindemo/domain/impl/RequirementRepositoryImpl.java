@@ -13,7 +13,7 @@ public class RequirementRepositoryImpl extends BaseAggregateRootRepository<Requi
 	}
 
 	@Override
-	public Requirement create() {
+	public Requirement doCreate() {
 		return new RequirementImpl(createNode(), getNextId(), getServiceProvider());
 	}
 
