@@ -35,7 +35,7 @@ public class DemoApp extends Application {
 
     @Override
     public void init() {
-        Window mainWindow = new Window("Neo4j Vaadin Demo 1");
+        Window mainWindow = new Window("Neo4j Vaadin Demo 2");
         initMainWindow(mainWindow);
         setMainWindow(mainWindow);
     }
@@ -51,7 +51,7 @@ public class DemoApp extends Application {
         layout.setMargin(true);
         layout.setSizeFull();
 
-        final Label header = new Label("Neo4j Vaadin Demo 1");
+        final Label header = new Label("Neo4j Vaadin Demo 2");
         header.addStyleName(Reindeer.LABEL_H1);
         layout.addComponent(header);
 
