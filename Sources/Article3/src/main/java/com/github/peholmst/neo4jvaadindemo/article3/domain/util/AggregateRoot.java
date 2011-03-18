@@ -8,7 +8,5 @@ public interface AggregateRoot extends Entity {
 
     boolean hasUncommittedChanges();
 
-    public boolean isInvalid();
-
     void delete() throws ObjectInvalidException, OptimisticLockingException;
 }
