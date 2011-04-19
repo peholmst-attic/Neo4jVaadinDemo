@@ -37,7 +37,7 @@ class SimpleProperty extends AbstractProperty {
     
     @Override
     public Object getValue() {
-        Object target = getItem();
+        Object target = getInvocationTarget();
         if (target == null) {
             return null;
         }
@@ -48,7 +48,7 @@ class SimpleProperty extends AbstractProperty {
         }
     }
 
-    protected Object getItem() {
+    protected Object getInvocationTarget() {
         return item;
     }
 
@@ -58,7 +58,7 @@ class SimpleProperty extends AbstractProperty {
             throw new ReadOnlyException();
         }
         try {
-            setterMethod.invoke(getItem(), newValue);
+            setterMethod.invoke(getInvocationTarget(), newValue);
             fireValueChangeEvent();
         } catch (Exception e) {
             throw new ConversionException(e);
@@ -72,7 +72,7 @@ class SimpleProperty extends AbstractProperty {
 
     @Override
     public boolean isReadOnly() {
-        return setterMethod == null || getItem() == null || readOnly;
+        return setterMethod == null || getInvocationTarget() == null || readOnly;
     }
 
     @Override
