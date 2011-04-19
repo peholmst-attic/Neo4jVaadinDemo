@@ -1,12 +1,28 @@
 package com.github.peholmst.neo4jvaadindemo.article3.domain.util;
 
+/**
+ * Base interface for entities that act as aggregate roots.
+ * @author Petter Holmström
+ */
 public interface AggregateRoot extends Entity {
 
-    void commitChanges() throws ObjectInvalidException, OptimisticLockingException;
+    /**
+     * Commits all the changes to the underlying Neo4j graph.
+     */
+    void commitChanges();
 
-    void discardChanges() throws ObjectInvalidException, OptimisticLockingException;
+    /**
+     * Discards all the changes.
+     */
+    void discardChanges();
 
+    /**
+     * Checks if there are uncommitted changes.
+     */
     boolean hasUncommittedChanges();
 
-    void delete() throws ObjectInvalidException, OptimisticLockingException;
+    /**
+     * Deletes the aggregate root and all its aggregates.
+     */
+    void delete();
 }
