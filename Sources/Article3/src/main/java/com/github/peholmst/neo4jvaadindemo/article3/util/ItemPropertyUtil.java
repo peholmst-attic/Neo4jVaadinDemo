@@ -1,230 +1,190 @@
 package com.github.peholmst.neo4jvaadindemo.article3.util;
 
-import com.github.peholmst.neo4jvaadindemo.article3.util.ListenerList.ListenerNotifier;
 import com.vaadin.data.Property;
-import com.vaadin.data.Property.ValueChangeListener;
 import java.beans.Introspector;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashSet;
 
 /**
- * TODO Document me!
+ * Utility class for working with objects that use the {@link ItemProperty} annotation.
  * 
- * @author peholmst
+ * @author Petter Holmström
  */
 public final class ItemPropertyUtil {
 
-    private ItemPropertyUtil() {
-    }
-
     /**
-     * 
-     * @param itemClass
-     * @param includeNestedProperties
-     * @return 
+     * Returns a collection of the names of all public JavaBean properties of the specified class that
+     * have been annotated with the {@link ItemProperty} annotation. If <code>includeNestedProperties</code> is true,
+     * nested property names (i.e. "xx.yy.zz") will also be included.
      */
     public static Collection<String> getItemPropertyIdsFromClass(Class<?> itemClass, boolean includeNestedProperties) {
-        HashSet<String> itemIds = new HashSet<String>();
-        for (Method method : itemClass.getMethods()) {
+        return new ItemPropertyIdExtractor(itemClass, includeNestedProperties).getItemPropertyIds();
+    }
+
+    private static class ItemPropertyIdExtractor {
+
+        private final boolean includeNestedProperties;
+        private final Class<?> itemClass;
+
+        private ItemPropertyIdExtractor(Class<?> itemClass, boolean includeNestedProperties) {
+            this.itemClass = itemClass;
+            this.includeNestedProperties = includeNestedProperties;
+        }
+
+        private Collection<String> getItemPropertyIds() {
+            HashSet<String> propertyIds = new HashSet<String>();
+            for (Method method : itemClass.getMethods()) {
+                addPropertyNamesFromMethod(method, propertyIds);
+            }
+            return propertyIds;
+        }
+
+        private void addPropertyNamesFromMethod(Method method, HashSet<String> propertyIds) {
             ItemProperty itemPropertyMetadata = method.getAnnotation(ItemProperty.class);
             if (itemPropertyMetadata != null) {
                 String propertyName = getPropertyNameFromMethod(method);
-                itemIds.add(propertyName);
+                propertyIds.add(propertyName);
                 if (includeNestedProperties) {
-                    addNestedProperties(propertyName, itemPropertyMetadata, itemIds);
+                    addNestedProperties(propertyName, itemPropertyMetadata, propertyIds);
                 }
             }
-        }
-        return itemIds;
-    }
 
-    private static String getPropertyNameFromMethod(Method method) {
-        String baseName;
-        if (method.getName().startsWith("is")) {
-            baseName = method.getName().substring(2);
-        } else if (method.getName().startsWith("get")) {
-            baseName = method.getName().substring(3);
-        } else {
-            throw new IllegalArgumentException("Method is not a getter");
         }
-        return Introspector.decapitalize(baseName);
-    }
 
-    private static void addNestedProperties(String baseName, ItemProperty itemPropertyMetadata, HashSet<String> itemIds) {
-        for (NestedItemProperty nestedProperty : itemPropertyMetadata.nestedProperties()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(baseName);
-            sb.append(".");
-            sb.append(nestedProperty.propertyName());
-            itemIds.add(sb.toString());
+        private String getPropertyNameFromMethod(Method method) {
+            String baseName;
+            if (method.getName().startsWith("is")) {
+                baseName = method.getName().substring(2);
+            } else if (method.getName().startsWith("get")) {
+                baseName = method.getName().substring(3);
+            } else {
+                throw new IllegalArgumentException("Method is not a getter");
+            }
+            return Introspector.decapitalize(baseName);
+        }
+
+        private void addNestedProperties(String baseName, ItemProperty itemPropertyMetadata, HashSet<String> itemIds) {
+            for (NestedItemProperty nestedProperty : itemPropertyMetadata.nestedProperties()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(baseName);
+                sb.append(".");
+                sb.append(nestedProperty.propertyName());
+                itemIds.add(sb.toString());
+            }
         }
     }
 
     /**
-     * 
-     * @param propertyName
-     * @param item
-     * @return 
+     * Creates a new {@link Property} instance for the specified property name
+     * and item. Nested properties are supported.
      */
     public static Property createProperty(String propertyName, Object item) {
-        if (propertyName.contains(".")) {
+        assert item != null : "item must not be null";
+        assert propertyName != null : "propertyName must not be null";
+        if (propertyNameIsNested(propertyName)) {
             return createNestedProperty(propertyName, item);
         } else {
             return createSimpleProperty(propertyName, item);
         }
     }
 
-    private static abstract class AbstractProperty implements Property, Property.ReadOnlyStatusChangeNotifier, Property.ValueChangeNotifier {
-
-        private final ListenerList<ReadOnlyStatusChangeListener> readOnlyListeners = new ListenerList<ReadOnlyStatusChangeListener>();
-        private final ListenerList<ValueChangeListener> valueChangeListeners = new ListenerList<ValueChangeListener>();
-
-        @Override
-        public final void addListener(ReadOnlyStatusChangeListener listener) {
-            readOnlyListeners.add(listener);
-        }
-
-        @Override
-        public final void removeListener(ReadOnlyStatusChangeListener listener) {
-            readOnlyListeners.remove(listener);
-        }
-
-        @Override
-        public final void addListener(ValueChangeListener listener) {
-            valueChangeListeners.add(listener);
-        }
-
-        @Override
-        public final void removeListener(ValueChangeListener listener) {
-            valueChangeListeners.remove(listener);
-        }
-
-        protected void fireValueChangeEvent() {
-            final ValueChangeEvent event = new ValueChangeEvent() {
-
-                @Override
-                public Property getProperty() {
-                    return AbstractProperty.this;
-                }
-            };
-            valueChangeListeners.notifyListeners(new ListenerNotifier<ValueChangeListener>() {
-
-                @Override
-                public void notifyListener(ValueChangeListener listener) {
-                    listener.valueChange(event);
-                }
-            });
-        }
-
-        protected void fireReadOnlyStatusChangeEvent() {
-            final ReadOnlyStatusChangeEvent event = new ReadOnlyStatusChangeEvent() {
-
-                @Override
-                public Property getProperty() {
-                    return AbstractProperty.this;
-                }
-            };
-            readOnlyListeners.notifyListeners(new ListenerNotifier<ReadOnlyStatusChangeListener>() {
-
-                @Override
-                public void notifyListener(ReadOnlyStatusChangeListener listener) {
-                    listener.readOnlyStatusChange(event);
-                }
-            });
-        }
+    private static boolean propertyNameIsNested(String propertyName) {
+        return propertyName.contains(".");
     }
 
-    private static class SimpleProperty extends AbstractProperty {
+    private static Property createNestedProperty(String propertyName, Object item) {
+        return new NestedItemPropertyCreator(propertyName, item.getClass()).create(item);
+    }
 
-        private final Method getterMethod;
+    private static class NestedItemPropertyCreator {
+
+        private final String propertyName;
+        private final Class<?> itemClass;
+        private final String[] propertyNameParts;
+        private final Method[] getterMethodChain;
+        private final NestedItemProperty metadata;
         private final Method setterMethod;
-        private final Object item;
-        private boolean readOnly = false;
 
-        public SimpleProperty(Object item, Method getterMethod, Method setterMethod) {
-            this.getterMethod = getterMethod;
-            this.setterMethod = setterMethod;
-            this.item = item;
-        }
-
-        public SimpleProperty(Object item, Method getterMethod) {
-            this(item, getterMethod, null);
-        }
-
-        @Override
-        public Object getValue() {
-            Object target = getItem();
-            if (target == null) {
-                return null;
-            }
-            try {
-                return getterMethod.invoke(target);
-            } catch (Exception e) {
-                throw new RuntimeException("Could not access value", e);
-            }
-        }
+        private NestedItemPropertyCreator(String propertyName, Class<?> itemClass) {
+            this.propertyName = propertyName;
+            this.itemClass = itemClass;
+            this.propertyNameParts = propertyName.split("\\.");
+            this.getterMethodChain = constructGetterMethodChain();
+            this.metadata = extractMetadata();
+            this.setterMethod = extractSetterMethod();
         
-        protected Object getItem() {
-            return item;
         }
 
-        @Override
-        public void setValue(Object newValue) throws ReadOnlyException, ConversionException {
-            if (isReadOnly()) {
-                throw new ReadOnlyException();
+        private Method[] constructGetterMethodChain() {
+            Method[] chain = new Method[propertyNameParts.length];
+            Class<?> ownerClass = itemClass;
+            for (int i = 0; i < propertyNameParts.length; ++i) {
+                String propertyNamePart = propertyNameParts[i];
+                Method getter = findGetterMethod(propertyNamePart, ownerClass);
+                chain[i] = getter;
+                ownerClass = getter.getReturnType();
             }
-            try {
-                setterMethod.invoke(getItem(), newValue);
-                fireValueChangeEvent();
-            } catch (Exception e) {
-                throw new ConversionException(e);
+            return chain;
+        }
+
+        private NestedItemProperty extractMetadata() {
+            ItemProperty rootPropertyMetadata = getRootPropertyGetter().getAnnotation(ItemProperty.class);
+            if (rootPropertyMetadata == null) {
+                throw new IllegalArgumentException("No @ItemProperty annotation found");
+            }
+            NestedItemProperty nestedMetadata = extractNestedItemPropertyMetadata(rootPropertyMetadata);
+            if (nestedMetadata == null) {
+                throw new IllegalArgumentException("No @NestedItemProperty annotation found");
+            }
+            return nestedMetadata;
+        }
+
+        private NestedItemProperty extractNestedItemPropertyMetadata(ItemProperty rootPropertyMetadata) {
+            String expectedPropertyName = propertyName.substring(getRootPropertyName().length() + 1);
+            for (NestedItemProperty nestedItemProperty : rootPropertyMetadata.nestedProperties()) {
+                if (expectedPropertyName.equals(nestedItemProperty.propertyName())) {
+                    return nestedItemProperty;
+                }
+            }
+            return null;
+        }
+
+        private Method extractSetterMethod() {
+            String propertyName = propertyNameParts[propertyNameParts.length - 1];
+            Method propertyGetter = getterMethodChain[getterMethodChain.length -1];
+            Class<?> propertyType = propertyGetter.getReturnType();
+            Class<?> ownerClass = propertyGetter.getDeclaringClass();
+
+            return findSetterMethod(propertyName, propertyType, ownerClass);
+        }
+
+        private NestedProperty create(Object item) {
+            if (metadata.readOnly() || setterMethod == null) {
+                return NestedProperty.readOnlyNestedProperty(item, getterMethodChain);
+            } else {
+                return NestedProperty.writableNestedProperty(item, setterMethod, getterMethodChain);
+            
             }
         }
 
-        @Override
-        public Class<?> getType() {
-            return getterMethod.getReturnType();
+        private String getRootPropertyName() {
+            return propertyNameParts[0];
         }
 
-        @Override
-        public boolean isReadOnly() {
-            return setterMethod == null || getItem() == null || readOnly;
-        }
-
-        @Override
-        public void setReadOnly(boolean newStatus) {
-            if (setterMethod == null) {
-                throw new UnsupportedOperationException("No setter method available");
-            }
-            readOnly = newStatus;
-            fireReadOnlyStatusChangeEvent();
+        private Method getRootPropertyGetter() {
+            return getterMethodChain[0];
         }
     }
-    
-    private static class NestedProperty extends SimpleProperty {
 
-        private final Method parentGetter;
-        
-        public NestedProperty(Object item, Method parentGetter, Method getterMethod) {
-            super(item, getterMethod);
-            this.parentGetter = parentGetter;
+    private static Property createSimpleProperty(String propertyName, Object item) {
+        Method getterMethod = findGetterMethod(propertyName, item.getClass());
+        Method setterMethod = findSetterMethod(propertyName, getterMethod.getReturnType(), item.getClass());
+        if (setterMethod != null) {
+            return SimpleProperty.writableProperty(item, getterMethod, setterMethod);
+        } else {
+            return SimpleProperty.readOnlyProperty(item, getterMethod);
         }
-
-        public NestedProperty(Object item, Method parentGetter, Method getterMethod, Method setterMethod) {
-            super(item, getterMethod, setterMethod);
-            this.parentGetter = parentGetter;
-        }               
-                
-        @Override
-        protected Object getItem() {
-            try {
-                return parentGetter.invoke(super.getItem());
-            } catch (Exception e) {
-                throw new RuntimeException("Could not access parent getter");
-            }
-        }        
-        
     }
 
     private static String capitalize(String original) {
@@ -237,75 +197,28 @@ public final class ItemPropertyUtil {
         return sb.toString();
     }
 
-    private static Method findGetterMethod(String propertyName, Class<?> itemClass) throws NoSuchMethodException {
-        String capitalizedPropertyName = capitalize(propertyName);
-        Method getterMethod;
+    private static Method findGetterMethod(String propertyName, Class<?> itemClass) {
         try {
-            getterMethod = itemClass.getMethod("get" + capitalizedPropertyName);
-        } catch (NoSuchMethodException e) {
-            getterMethod = itemClass.getMethod("is" + capitalizedPropertyName);
-        }
-        return getterMethod;
-    }
-
-    private static Method findSetterMethod(String propertyName, Class<?> propertyType, Class<?> itemClass) throws NoSuchMethodException {
-        String capitalizedPropertyName = capitalize(propertyName);
-        Method setterMethod = itemClass.getMethod("set" + capitalizedPropertyName, propertyType);
-        return setterMethod;
-    }
-
-    private static Property createSimpleProperty(String propertyName, Object item) {
-        try {
-            Method getterMethod = findGetterMethod(propertyName, item.getClass());
+            String capitalizedPropertyName = capitalize(propertyName);
+            Method getterMethod;
             try {
-                Method setterMethod = findSetterMethod(propertyName, getterMethod.getReturnType(), item.getClass());
-                return new SimpleProperty(item, getterMethod, setterMethod);
+                getterMethod = itemClass.getMethod("get" + capitalizedPropertyName);
             } catch (NoSuchMethodException e) {
-                return new SimpleProperty(item, getterMethod);
+                getterMethod = itemClass.getMethod("is" + capitalizedPropertyName);
             }
+            return getterMethod;
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("Could not find getter method for property");
+            throw new IllegalArgumentException("Could not find getter method for property " + propertyName);
         }
     }
 
-    private static Property createNestedProperty(String propertyName, Object item) {
-        // TODO This method could use some cleaning up
-        int indexOfSeparator = propertyName.indexOf(".");
-        String parentProperty = propertyName.substring(0, indexOfSeparator);
-        String nestedProperty = propertyName.substring(indexOfSeparator +1);
+    private static Method findSetterMethod(String propertyName, Class<?> propertyType, Class<?> itemClass) {
         try {
-            Method parentGetter = findGetterMethod(parentProperty, item.getClass());
-            ItemProperty metadata = parentGetter.getAnnotation(ItemProperty.class);
-            if (metadata == null) {
-                throw new IllegalArgumentException("No @ItemProperty annotation found");
-            }
-            NestedItemProperty nestedMetadata = getNestedItemPropertyMetadata(nestedProperty, metadata);
-            if (nestedMetadata == null) {
-                throw new IllegalArgumentException("No @NestedItemProperty annotation found");
-            }
-            
-            Method getterMethod = findGetterMethod(nestedProperty, parentGetter.getReturnType());
-            if (nestedMetadata.readOnly()) {
-                return new NestedProperty(item, parentGetter, getterMethod);
-            } else {
-                try {
-                    Method setterMethod = findSetterMethod(nestedProperty, getterMethod.getReturnType(), parentGetter.getReturnType());
-                    return new NestedProperty(item, parentGetter, getterMethod, setterMethod);
-                } catch (NoSuchMethodException e) {
-                    return new NestedProperty(item, parentGetter, getterMethod);                    
-                }
-            }            
+            String capitalizedPropertyName = capitalize(propertyName);
+            Method setterMethod = itemClass.getMethod("set" + capitalizedPropertyName, propertyType);
+            return setterMethod;
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("Could not find getter method for property");
+            return null;
         }
     }
-    
-   private static NestedItemProperty getNestedItemPropertyMetadata(String propertyName, ItemProperty parentMetadata) {
-       for (NestedItemProperty nestedItemProperty : parentMetadata.nestedProperties()) {
-           if (propertyName.equals(nestedItemProperty.propertyName())) {
-               return nestedItemProperty;
-           }
-       }
-       return null;
-   }
 }
