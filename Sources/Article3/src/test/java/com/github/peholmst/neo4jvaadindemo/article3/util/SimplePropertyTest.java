@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static com.github.peholmst.neo4jvaadindemo.article3.util.TestUtils.*;
 
 /**
  * Test-case for {@link SimpleProperty}.
@@ -24,7 +25,7 @@ public class SimplePropertyTest {
     ReadOnlyStatusChangeListener readOnlyListener;
     ValueChangeListener valueListener;
 
-    static class TestClass {
+    static class TestClass implements java.io.Serializable {
 
         private String myValue;
 
@@ -140,5 +141,25 @@ public class SimplePropertyTest {
     public void writableProperty_nullItem_setValue() {
         SimpleProperty writable = SimpleProperty.writableProperty(null, myValueGetter, myValueSetter);
         writable.setValue("Hello");
+    }
+    
+    @Test
+    public void readOnlyPropertyWorksAfterSerialization() throws Exception {
+        SimpleProperty readOnly = SimpleProperty.readOnlyProperty(item, myValueGetter);
+        item.setMyValue("Hello");
+        
+        SimpleProperty deserialized = (SimpleProperty) deserialize(serialize(readOnly));
+        assertEquals("Hello", deserialized.getValue());
+        assertSame(String.class, deserialized.getType());
+        assertTrue(deserialized.isReadOnly());        
+    }
+
+    @Test
+    public void writablePropertyWorksAfterSerialization() throws Exception {
+        SimpleProperty writable = SimpleProperty.writableProperty(item, myValueGetter, myValueSetter);
+        
+        SimpleProperty deserialized = (SimpleProperty) deserialize(serialize(writable));
+        deserialized.setValue("Hello");
+        assertFalse(deserialized.isReadOnly());        
     }
 }
